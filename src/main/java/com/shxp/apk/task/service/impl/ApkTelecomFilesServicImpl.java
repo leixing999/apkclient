@@ -73,7 +73,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 apkTelecomFilesPo.setFileSize("" + file.length());
                 apkTelecomFilesPo.setFileId(UUID.randomUUID().toString());
                 apkTelecomFilesPo.setFileStatus("0");
-                apkTelecomFilesPo.setFileFinishedRecords("");
+                apkTelecomFilesPo.setFileFinishedRecords("0");
                 apkTelecomFilesPo.setFileRecords(fileRecords);
                 apkTelecomFilesPo.setFileImportTime("");
                 this.addApkTelecomFiles(apkTelecomFilesPo);

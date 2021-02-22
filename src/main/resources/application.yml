@@ -7,15 +7,13 @@ spring:
 #电信apk文件存放路径
 apkconfig:
   ######电信apk解析包指定目录
-  filepath: 'G:\apk\'
+  filepath: 'd:\apk\'
   ######下载APK指定保存目录
-  downloadpath: 'G:\apkdownload\'
+  downloadpath: 'd:\apkdownload\'
   #####限定下载文件大小
   filemax: 104857600
   #####默认每批次启动线程数
   maxthread: 10
 logging:
-  charset:
-    console: utf-8
   config: classpath:logback-spring.xml
 

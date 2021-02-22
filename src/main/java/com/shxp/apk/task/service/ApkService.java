@@ -1,19 +1,16 @@
 package com.shxp.apk.task.service;
 
-import com.shxp.apk.domain.po.ApkTelecomFilesPo;
-import com.shxp.apk.domain.vo.UrlPathVO;
-import com.shxp.apk.task.MultiThreadDownload;
-import com.shxp.apk.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class ApkService {
     final static long MAX_FILE_SIZE =100*1024*1024;
+    private static final Logger log = LoggerFactory.getLogger(ApkService.class);
+
 
 
     @Autowired
@@ -22,13 +19,13 @@ public class ApkService {
     public void runApkService()   {
         while(true) {
             try {
-                System.out.println("------------扫描电信apk文件入库");
+                log.info("------------扫描电信apk文件入库");
                 apkTelecomFilesService.apkDealyService();
-                System.out.println("------------解析电信apk文件入库");
+                log.info("------------解析电信apk文件入库");
                 apkTelecomFilesService.apkParseService();
                 Thread.sleep(10000);
             }catch(InterruptedException ex){
-                System.out.println("runApkService"+ex);
+                log.info("runApkService"+ex);
             }
         }
     }

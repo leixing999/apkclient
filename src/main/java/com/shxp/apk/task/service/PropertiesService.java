@@ -25,4 +25,10 @@ public class PropertiesService {
     public long getFilemax(){
         return filemax;
     }
+
+    @Value("${apkconfig.maxthread}")
+    int maxthread;
+    public int getMaxThread(){
+        return maxthread;
+    }
 }

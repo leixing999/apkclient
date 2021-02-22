@@ -1,6 +1,3 @@
-#mybatis:
-#  mapper-locations: classpath:mapping/*Mapper.xml
-#  type-aliases-package: com.wisea.tp.entity
 
 spring:
   datasource:
@@ -9,7 +6,16 @@ spring:
 
 #电信apk文件存放路径
 apkconfig:
+  ######电信apk解析包指定目录
   filepath: 'G:\apk\'
+  ######下载APK指定保存目录
   downloadpath: 'G:\apkdownload\'
+  #####限定下载文件大小
   filemax: 104857600
+  #####默认每批次启动线程数
+  maxthread: 10
+logging:
+  charset:
+    console: utf-8
+  config: classpath:logback-spring.xml
 

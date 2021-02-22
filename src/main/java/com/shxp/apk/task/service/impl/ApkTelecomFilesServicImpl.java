@@ -7,6 +7,8 @@ import com.shxp.apk.task.MultiThreadDownload;
 import com.shxp.apk.task.mapper.ApkTelecomFileMapper;
 import com.shxp.apk.task.service.*;
 import com.shxp.apk.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,8 @@ import java.util.concurrent.*;
 
 @Service
 public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
+    private static final Logger log = LoggerFactory.getLogger(ApkTelecomFilesServicImpl.class);
+
     @Autowired
     ApkTelecomFileMapper apkTelecomFileMapper;
     @Autowired
@@ -70,6 +74,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 this.addApkTelecomFiles(apkTelecomFilesPo);
             } else {
                 System.out.println("exists");
+                log.info("【apkDealyService】文件已存在，" + file.getName());
             }
         }
     }
@@ -82,9 +87,10 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
         //获取待要下载的电信APK 文件信息
         List<ApkTelecomFilesPo> delayList = this.getApkTelecomFiles();
         //配置每次下载启动10个线程，每个线程下载对应的一个文件
-        ExecutorService executor =Executors.newFixedThreadPool(10);
+        ExecutorService executor = Executors.newFixedThreadPool(10);
         //获取保存下载的文件路径
         String downloadFilePath = propertiesService.getDownloadpath();
+        int maxThread = propertiesService.getMaxThread();
         //初始化解析电信APK文件的URL分析服务
         UrlPathService urlPathService = new UrlPathService();
         for (ApkTelecomFilesPo apkTelecomFilesPo : delayList) {
@@ -94,50 +100,51 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
             //apk现在线程队列
             List<ApkDownThread> myThreadList = null;
             //获取上次下载的电信APK包文件位置
-            int nextDownloadIndex =Integer.parseInt(apkTelecomFilesPo.getFileFinishedRecords());
+            int nextDownloadIndex = Integer.parseInt(apkTelecomFilesPo.getFileFinishedRecords());
             //每次线程批量下载的开始索引
-            int startIndex =0;
+            int startIndex = 0;
             //每次线程批量下载的结束索引
-            int endIndex = 0 ;
+            int endIndex = 0;
             //获取一批次下载的URL路径信息
             List<UrlPathVO> tempUrlPathVOList = null;
             //判断是否完成批量下载
             boolean isEnd = true;
-            while(isEnd){
-                startIndex = nextDownloadIndex*10;
-                endIndex = (nextDownloadIndex+1)*10;
+            while (isEnd) {
+                startIndex = nextDownloadIndex * maxThread;
+                endIndex = (nextDownloadIndex + 1) * maxThread;
                 //获取本次队列要下载的APK路径队列
-                if(endIndex < urlPathVOList.size()){
-                     tempUrlPathVOList =urlPathVOList.subList(startIndex,endIndex);
-                }else{
-                    tempUrlPathVOList =urlPathVOList.subList(startIndex,urlPathVOList.size());
+                if (endIndex < urlPathVOList.size()) {
+                    tempUrlPathVOList = urlPathVOList.subList(startIndex, endIndex);
+                } else {
+                    tempUrlPathVOList = urlPathVOList.subList(startIndex, urlPathVOList.size());
                     isEnd = false;
                 }
                 //初始化apk现在线程队列
                 myThreadList = new ArrayList<>();
                 UrlPathVO tempPathVo = null;
-                for(int i=0;i<10;i++){
+                for (int i = 0; i < maxThread; i++) {
                     tempPathVo = tempUrlPathVOList.get(i);
                     //判断是否此APK是否下载过
                     if (apkTelecomFileParseService.getApkTelecomFileParseList(tempPathVo.getApkFileName()).size() == 0) {
                         //将待下载的APK信息添加到对应的队列中
-                        myThreadList.add(new ApkDownThread(tempPathVo,apkTelecomFilesPo.getFileId()));
+                        myThreadList.add(new ApkDownThread(tempPathVo, apkTelecomFilesPo.getFileId()));
                     }
                 }
 
                 try {
                     //获取本批次线程执行队列结果信息
-                    List<Future<String>> futures =  executor.invokeAll(myThreadList);
-                    for(int i=0;i<futures.size();i++){
-                        System.out.println(futures.get(i).get());
+                    List<Future<String>> futures = executor.invokeAll(myThreadList);
+                    for (int i = 0; i < futures.size(); i++) {
+                        log.info(futures.get(i).get());
                     }
                 } catch (Exception e) {
-                    System.out.println("下载异常："+e);
+                    ///System.out.println("下载异常："+e);
+                    log.error("下载异常：" + e);
 
                 } finally {
-                    System.out.println("完成下载量==="+endIndex);
+                    log.info("完成下载量===" + endIndex);
                     //执行将本次执行队列索引更新到数据库配置文件中
-                    apkTelecomFilesPo.setFileFinishedRecords(nextDownloadIndex+"");
+                    apkTelecomFilesPo.setFileFinishedRecords(nextDownloadIndex + "");
                     this.updateApkTelecomFile(apkTelecomFilesPo);
                 }
                 //获取下批次线程索引值
@@ -146,7 +153,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
             }
             //完成本批次线程
             apkTelecomFilesPo.setFileStatus("2");
-            apkTelecomFilesPo.setFileFinishedRecords(urlPathVOList.size()+"");
+            apkTelecomFilesPo.setFileFinishedRecords(urlPathVOList.size() + "");
             this.updateApkTelecomFile(apkTelecomFilesPo);
         }
         executor.shutdown();
@@ -156,13 +163,15 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
     /***
      * Apk下载进程
      */
-     class ApkDownThread implements Callable<String> {
+    class ApkDownThread implements Callable<String> {
         private UrlPathVO urlPathVO;
-        private String fileId =null;
-        public ApkDownThread(UrlPathVO urlPathVO,String fileId){
+        private String fileId = null;
+
+        public ApkDownThread(UrlPathVO urlPathVO, String fileId) {
             this.urlPathVO = urlPathVO;
             this.fileId = fileId;
         }
+
         @Override
         public String call() throws Exception {
             String downloadFilePath = propertiesService.getDownloadpath();
@@ -193,10 +202,9 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 apkTelecomFileParseService.addApkTelecomFileParse(apkTelecomFileParsePo);
 
             }
-            return "【"+urlPathVO.getApkFileName() +"】，下载完成！";
+            return "【" + urlPathVO.getApkFileName() + "】，下载完成！";
         }
     }
-
 
 
     @Override

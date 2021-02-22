@@ -1,8 +1,11 @@
 package com.shxp.apk.task.service;
 
 import com.shxp.apk.domain.vo.UrlPathVO;
+import com.shxp.apk.task.job.ApkSearchRunner;
 import com.shxp.apk.utils.ConverPercent;
 import com.shxp.apk.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
@@ -18,6 +21,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class UrlPathService {
+    private static final Logger log = LoggerFactory.getLogger(UrlPathService.class);
 
     public List<UrlPathVO>parseApkUrlPath(String apkFilePath){
         List<String> list = FileUtils.getContentByLineList(apkFilePath);
@@ -77,7 +81,7 @@ public class UrlPathService {
                 apkFileName = url.substring(apkStartPosition+1, apkEndPosition + 4);
             }
         }catch(Exception ex){
-            System.out.println(ex);
+            log.error("获取apk文件名称【getApkFileName】："+ex);
         }
         return apkFileName.replace("?","");
     }
@@ -100,7 +104,7 @@ public class UrlPathService {
                 requestUrlPath = url.substring(0, apkPosition + 4);
             }
         }catch(Exception ex){
-            System.out.println(url);
+            log.error("获取apk文件名称【getRequestUrlPath】："+url);
         }
         return requestUrlPath;
 

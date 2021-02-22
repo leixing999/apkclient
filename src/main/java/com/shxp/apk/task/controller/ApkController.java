@@ -3,6 +3,7 @@ package com.shxp.apk.task.controller;
 import ch.qos.logback.core.net.SyslogOutputStream;
 import com.shxp.apk.domain.po.ApkTelecomFilesPo;
 import com.shxp.apk.task.mapper.ApkTelecomFileMapper;
+import com.shxp.apk.task.service.ApkTelecomFileParseService;
 import com.shxp.apk.task.service.ApkTelecomFilesService;
 import org.apache.ibatis.annotations.ResultMap;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,8 @@ import java.util.UUID;
 public class ApkController {
     @Autowired
     ApkTelecomFilesService apkTelecomFilesService;
+    @Autowired
+    ApkTelecomFileParseService apkTelecomFileParseService;
     @RequestMapping("/list")
     public void list(){
         List<ApkTelecomFilesPo> list = apkTelecomFilesService.getApkTelecomFiles();
@@ -44,5 +47,10 @@ public class ApkController {
         }catch(Exception ex){
             System.out.println(ex);
         }
+    }
+
+    @RequestMapping("/addApkParseService")
+    public void addApkParseService(){
+        apkTelecomFilesService.apkAnalyseService();
     }
 }

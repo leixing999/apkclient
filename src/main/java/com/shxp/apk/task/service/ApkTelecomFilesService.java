@@ -15,4 +15,6 @@ public interface ApkTelecomFilesService {
     public void apkParseService();
 
     public void apkPareseDelayService(ApkTelecomFilesPo apkTelecomFilesPo);
+
+    public void apkAnalyseService();
 }

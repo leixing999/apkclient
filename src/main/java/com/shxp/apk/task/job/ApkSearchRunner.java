@@ -20,9 +20,13 @@ public class ApkSearchRunner implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(ApkSearchRunner.class);
     @Autowired
     ApkService apkService;
-    public void run(ApplicationArguments args) throws Exception {
-        log.info("启动默认扫描电信apk文件扫描和解析服务");
-        apkService.runApkService();
-        log.info("结束默认扫描电信apk文件扫描和解析服务");
+    public void run(ApplicationArguments args)  {
+        try {
+            log.info("启动默认扫描电信apk文件扫描和解析服务");
+            apkService.runApkService();
+            log.info("结束默认扫描电信apk文件扫描和解析服务");
+        }catch(Exception ex){
+            log.error("ApkSearchRunner--->"+ex);
+        }
     }
 }

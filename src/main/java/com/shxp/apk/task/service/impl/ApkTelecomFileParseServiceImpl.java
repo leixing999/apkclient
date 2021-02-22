@@ -23,4 +23,14 @@ public class ApkTelecomFileParseServiceImpl implements ApkTelecomFileParseServic
     public List<ApkTelecomFileParsePo> getApkTelecomFileParseList(String apkFilename) {
         return apkTelecomFileParseMapper.getApkTelecomFileParseList(apkFilename);
     }
+
+    @Override
+    public void updateApkTelecomFileParses(String id, String status) {
+        apkTelecomFileParseMapper.updateApkTelecomFileParses(id,status);
+    }
+
+    @Override
+    public List<ApkTelecomFileParsePo> getApkTelecomFileParses(String analyseFlag) {
+        return apkTelecomFileParseMapper.getApkTelecomFileParses(analyseFlag);
+    }
 }

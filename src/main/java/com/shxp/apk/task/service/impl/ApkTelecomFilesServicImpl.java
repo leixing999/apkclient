@@ -1,5 +1,8 @@
 package com.shxp.apk.task.service.impl;
 
+import com.shxp.apk.analyse.ApkInfo;
+import com.shxp.apk.analyse.ApkUtil;
+import com.shxp.apk.domain.po.ApkTelecomFileDetailPo;
 import com.shxp.apk.domain.po.ApkTelecomFileParsePo;
 import com.shxp.apk.domain.po.ApkTelecomFilesPo;
 import com.shxp.apk.domain.vo.UrlPathVO;
@@ -31,6 +34,8 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
     PropertiesService propertiesService;
     @Autowired
     ApkTelecomFileParseService apkTelecomFileParseService;
+    @Autowired
+    ApkTelecomFileDetailService apkTelecomFileDetailService;
 
     @Override
     public List<ApkTelecomFilesPo> getApkTelecomFiles() {
@@ -210,6 +215,46 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
     @Override
     public void apkPareseDelayService(ApkTelecomFilesPo apkTelecomFilesPo) {
 
+
+    }
+
+    /****
+     * 分析apk文件的的权限。包名以及主类等信息
+     */
+    @Override
+    public void apkAnalyseService() {
+        log.info("解析apk文件的的权限。包名以及主类等信息 开始");
+        List<ApkTelecomFileParsePo> list = apkTelecomFileParseService.getApkTelecomFileParses("0");
+        String status = "2";
+
+        for (ApkTelecomFileParsePo apkTelecomFileParsePo : list) {
+            try {
+
+                String apkPath = propertiesService.getDownloadpath() + apkTelecomFileParsePo.getApkFileName();
+                ApkInfo apkInfo = new ApkUtil().getApkInfo(apkPath);
+
+                ApkTelecomFileDetailPo apkTelecomFileDetailPo = new ApkTelecomFileDetailPo();
+                apkTelecomFileDetailPo.setId(UUID.randomUUID().toString());
+                apkTelecomFileDetailPo.setApkFilename(apkTelecomFileParsePo.getApkFileName());
+                apkTelecomFileDetailPo.setApkFilenameAlias(apkInfo.getApplicationLable());
+                apkTelecomFileDetailPo.setApkClassName(apkInfo.getLaunchableActivity());
+                apkTelecomFileDetailPo.setApkPackageName(apkInfo.getPackageName());
+                apkTelecomFileDetailPo.setApkVersion(apkInfo.getVersionName());
+                apkTelecomFileDetailPo.setApkPermissionName(apkInfo.getUsesPermissions().toString());
+                apkTelecomFileDetailPo.setApkOriginName(apkInfo.toString());
+                //将解析Apk信息插入Apk解包明细表中去
+                apkTelecomFileDetailService.addApkFileDetail(apkTelecomFileDetailPo);
+
+            } catch (Exception e) {
+                status = "-1";
+                log.error("apkAnalyseService 解析异常：" + e);
+                e.printStackTrace();
+            } finally {
+                //更新apk解析表状态
+                apkTelecomFileParseService.updateApkTelecomFileParses(apkTelecomFileParsePo.getId(), status);
+            }
+        }
+        log.info("解析apk文件的的权限。包名以及主类等信息 结束");
 
     }
 }

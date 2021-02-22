@@ -79,58 +79,72 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
      */
     @Override
     public void apkParseService() {
+        //获取待要下载的电信APK 文件信息
         List<ApkTelecomFilesPo> delayList = this.getApkTelecomFiles();
+        //配置每次下载启动10个线程，每个线程下载对应的一个文件
         ExecutorService executor =Executors.newFixedThreadPool(10);
+        //获取保存下载的文件路径
         String downloadFilePath = propertiesService.getDownloadpath();
+        //初始化解析电信APK文件的URL分析服务
         UrlPathService urlPathService = new UrlPathService();
         for (ApkTelecomFilesPo apkTelecomFilesPo : delayList) {
+            //对电信APK文件下载进行归类为对应的URL 路径列表
+            List<UrlPathVO> urlPathVOList = urlPathService.parseApkUrlPath(apkTelecomFilesPo.getFilePath());
 
-            List<String> list = FileUtils.getContentByLineList(apkTelecomFilesPo.getFilePath());
-            List<UrlPathVO> urlPathVOList = urlPathService.parseApkUrlPath(list);
-
+            //apk现在线程队列
             List<ApkDownThread> myThreadList = null;
-            int j =Integer.parseInt(apkTelecomFilesPo.getFileFinishedRecords());
+            //获取上次下载的电信APK包文件位置
+            int nextDownloadIndex =Integer.parseInt(apkTelecomFilesPo.getFileFinishedRecords());
+            //每次线程批量下载的开始索引
             int startIndex =0;
+            //每次线程批量下载的结束索引
             int endIndex = 0 ;
+            //获取一批次下载的URL路径信息
             List<UrlPathVO> tempUrlPathVOList = null;
+            //判断是否完成批量下载
             boolean isEnd = true;
             while(isEnd){
-                startIndex = j*10;
-                endIndex = (j+1)*10;
+                startIndex = nextDownloadIndex*10;
+                endIndex = (nextDownloadIndex+1)*10;
+                //获取本次队列要下载的APK路径队列
                 if(endIndex < urlPathVOList.size()){
                      tempUrlPathVOList =urlPathVOList.subList(startIndex,endIndex);
                 }else{
                     tempUrlPathVOList =urlPathVOList.subList(startIndex,urlPathVOList.size());
                     isEnd = false;
                 }
+                //初始化apk现在线程队列
                 myThreadList = new ArrayList<>();
                 UrlPathVO tempPathVo = null;
                 for(int i=0;i<10;i++){
                     tempPathVo = tempUrlPathVOList.get(i);
+                    //判断是否此APK是否下载过
                     if (apkTelecomFileParseService.getApkTelecomFileParseList(tempPathVo.getApkFileName()).size() == 0) {
+                        //将待下载的APK信息添加到对应的队列中
                         myThreadList.add(new ApkDownThread(tempPathVo,apkTelecomFilesPo.getFileId()));
                     }
                 }
 
                 try {
+                    //获取本批次线程执行队列结果信息
                     List<Future<String>> futures =  executor.invokeAll(myThreadList);
                     for(int i=0;i<futures.size();i++){
                         System.out.println(futures.get(i).get());
                     }
-
                 } catch (Exception e) {
                     System.out.println("下载异常："+e);
 
                 } finally {
-                 //   executor.shutdown();
                     System.out.println("完成下载量==="+endIndex);
-                    apkTelecomFilesPo.setFileFinishedRecords(j+"");
+                    //执行将本次执行队列索引更新到数据库配置文件中
+                    apkTelecomFilesPo.setFileFinishedRecords(nextDownloadIndex+"");
                     this.updateApkTelecomFile(apkTelecomFilesPo);
                 }
-                j++;
-
+                //获取下批次线程索引值
+                nextDownloadIndex++;
 
             }
+            //完成本批次线程
             apkTelecomFilesPo.setFileStatus("2");
             apkTelecomFilesPo.setFileFinishedRecords(urlPathVOList.size()+"");
             this.updateApkTelecomFile(apkTelecomFilesPo);
@@ -154,6 +168,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
             String downloadFilePath = propertiesService.getDownloadpath();
             long fileMax = propertiesService.getFilemax();
             long startTime = System.currentTimeMillis();
+            /**********启动下载过程**************/
             MultiThreadDownload mtd = new MultiThreadDownload(
                     urlPathVO.getRequestApkUrlPath(),
                     downloadFilePath + urlPathVO.getApkFileName(),
@@ -161,6 +176,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
             long fileSize = mtd.download(fileMax);
             boolean isLimit = mtd.getIsLimit();
             boolean isDown = mtd.getIsDown();
+            /************结束下载过程******************/
             if (isDown || isLimit) {
                 ApkTelecomFileParsePo apkTelecomFileParsePo = new ApkTelecomFileParsePo();
                 apkTelecomFileParsePo.setFileId(this.fileId);
@@ -173,6 +189,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
 
                 long endTime = System.currentTimeMillis();
                 apkTelecomFileParsePo.setDownloadTime("" + (endTime - startTime));
+                //将下载的APK文件信息入库
                 apkTelecomFileParseService.addApkTelecomFileParse(apkTelecomFileParsePo);
 
             }
@@ -185,48 +202,6 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
     @Override
     public void apkPareseDelayService(ApkTelecomFilesPo apkTelecomFilesPo) {
 
-        long fileMax = propertiesService.getFilemax();
-        String downloadFilePath = propertiesService.getDownloadpath();
-        int finishedRecords = Integer.parseInt(apkTelecomFilesPo.getFileFinishedRecords());
-        List<String> list = FileUtils.getContentByLineList(apkTelecomFilesPo.getFilePath());
 
-        UrlPathService urlPathService = new UrlPathService();
-        List<UrlPathVO> urlPathVOList = urlPathService.parseApkUrlPath(list);
-
-        for (int i = finishedRecords; i < urlPathVOList.size(); i++) {
-            try {
-                UrlPathVO urlPathVO = urlPathVOList.get(i);
-                if (apkTelecomFileParseService.getApkTelecomFileParseList(urlPathVO.getApkFileName()).size() == 0) {
-                    long startTime = System.currentTimeMillis();
-                    MultiThreadDownload mtd = new MultiThreadDownload(
-                            urlPathVO.getRequestApkUrlPath(),
-                            downloadFilePath + urlPathVO.getApkFileName(),
-                            1);
-                    long fileSize = mtd.download(fileMax);
-                    int failThreadNum = mtd.getFailThreadNum();
-                    boolean isDown = mtd.getIsDown();
-                    boolean isLimit = mtd.getIsLimit();
-                    if (isDown || isLimit) {
-                        ApkTelecomFileParsePo apkTelecomFileParsePo = new ApkTelecomFileParsePo();
-                        apkTelecomFileParsePo.setFileId(apkTelecomFilesPo.getFileId());
-                        apkTelecomFileParsePo.setApkFileName(urlPathVO.getApkFileName());
-                        apkTelecomFileParsePo.setId(UUID.randomUUID().toString());
-                        apkTelecomFileParsePo.setDecodeUrlPath(urlPathVO.getDecodeUrlPath());
-                        apkTelecomFileParsePo.setOriginUrlPath(urlPathVO.getOrignUrlPath());
-                        apkTelecomFileParsePo.setFileSize("" + fileSize);
-                        apkTelecomFileParsePo.setIsDown("true");
-
-                        long endTime = System.currentTimeMillis();
-                        apkTelecomFileParsePo.setDownloadTime("" + (endTime - startTime));
-                        apkTelecomFileParseService.addApkTelecomFileParse(apkTelecomFileParsePo);
-
-                    }
-                    System.out.println("---------------------------------------i=" + i);
-                }
-
-            } catch (Exception ex) {
-                System.out.println(ex);
-            }
-        }
     }
 }

@@ -2,6 +2,7 @@ package com.shxp.apk.task.service;
 
 import com.shxp.apk.domain.vo.UrlPathVO;
 import com.shxp.apk.utils.ConverPercent;
+import com.shxp.apk.utils.FileUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
@@ -17,6 +18,12 @@ import java.util.stream.Collectors;
  */
 @Service
 public class UrlPathService {
+
+    public List<UrlPathVO>parseApkUrlPath(String apkFilePath){
+        List<String> list = FileUtils.getContentByLineList(apkFilePath);
+        List<UrlPathVO> urlPathVOList = this.parseApkUrlPath(list);
+        return urlPathVOList;
+    }
     /***
      * 解析文本文件原始行信息转换成实际apk文件路径信息
      * @param urlTextList

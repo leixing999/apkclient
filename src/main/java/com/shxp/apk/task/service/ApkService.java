@@ -19,10 +19,17 @@ public class ApkService {
     @Autowired
     ApkTelecomFilesService apkTelecomFilesService;
 
-    public void runApkService(){
-        System.out.println("------------扫描电信apk文件入库");
-        apkTelecomFilesService.apkDealyService();
-        System.out.println("------------解析电信apk文件入库");
-        apkTelecomFilesService.apkParseService();;
+    public void runApkService()   {
+        while(true) {
+            try {
+                System.out.println("------------扫描电信apk文件入库");
+                apkTelecomFilesService.apkDealyService();
+                System.out.println("------------解析电信apk文件入库");
+                apkTelecomFilesService.apkParseService();
+                Thread.sleep(10000);
+            }catch(InterruptedException ex){
+                System.out.println("runApkService"+ex);
+            }
+        }
     }
 }

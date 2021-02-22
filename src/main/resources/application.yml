@@ -1,0 +1,15 @@
+#mybatis:
+#  mapper-locations: classpath:mapping/*Mapper.xml
+#  type-aliases-package: com.wisea.tp.entity
+
+spring:
+  datasource:
+    url: jdbc:sqlite::resource:apk.db
+    driver-class-name: org.sqlite.JDBC
+
+#电信apk文件存放路径
+apkconfig:
+  filepath: 'G:\apk\'
+  downloadpath: 'G:\apkdownload\'
+  filemax: 104857600
+

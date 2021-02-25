@@ -166,16 +166,6 @@ public class ApkUtil {
         }
     }
 
-    public static void main(String[] args) {
-        try {
-            String demo = "G:\\apkdownload\\tianyinV1.2.1.apk";
-            ApkInfo apkInfo = new ApkUtil().getApkInfo(demo);
-            System.out.println(apkInfo);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public String getmAaptPath() {
         return mAaptPath;
     }

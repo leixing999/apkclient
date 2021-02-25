@@ -14,6 +14,11 @@ apkconfig:
   filemax: 104857600
   #####默认每批次启动线程数
   maxthread: 10
+
+#app服务器接口地址
+appserver:
+  httpUrl: 'http://127.0.0.1:8000'
+
 logging:
   config: classpath:logback-spring.xml
 

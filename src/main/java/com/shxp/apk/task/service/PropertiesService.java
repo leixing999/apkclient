@@ -31,4 +31,10 @@ public class PropertiesService {
     public int getMaxThread(){
         return maxthread;
     }
+
+    @Value("${appserver.httpUrl}")
+    String appServerHttpUrl;
+    public String getAppServerHttpUrl(){
+        return appServerHttpUrl;
+    }
 }

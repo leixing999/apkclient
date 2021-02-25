@@ -36,6 +36,8 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
     ApkTelecomFileParseService apkTelecomFileParseService;
     @Autowired
     ApkTelecomFileDetailService apkTelecomFileDetailService;
+    @Autowired
+    ServerReqService serverReqService;
 
     @Override
     public List<ApkTelecomFilesPo> getApkTelecomFiles() {

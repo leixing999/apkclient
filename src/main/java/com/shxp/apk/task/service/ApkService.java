@@ -23,6 +23,10 @@ public class ApkService {
                 apkTelecomFilesService.apkDealyService();
                 log.info("------------解析电信apk文件入库");
                 apkTelecomFilesService.apkParseService();
+
+                log.info("------------静态分析电信app");
+
+                apkTelecomFilesService.apkAnalyseService();
                 Thread.sleep(10000);
             }catch(InterruptedException ex){
                 log.info("runApkService"+ex);

@@ -1,6 +1,8 @@
 package com.shxp.apk.task.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
+import com.shxp.apk.domain.po.AppPermission;
+import com.shxp.apk.domain.po.AppTelecomLink;
 import com.shxp.apk.domain.po.AppTelecomLinkPackage;
 import com.shxp.apk.task.service.ApkService;
 import com.shxp.apk.task.service.PropertiesService;
@@ -29,7 +31,7 @@ public class ServerReqServiceImpl implements ServerReqService {
         JSONObject jsonObject = (JSONObject)JSONObject.toJSON(appTelecomLinkPackage);
         String appServerHttpUrl = propertiesService.getAppServerHttpUrl();
         try {
-            String reqUrl = appServerHttpUrl;
+            String reqUrl = appServerHttpUrl+"/api/AppTelecomLinkPackage/saveAppTelecomLinkPackage";
             RestClient.postForm(reqUrl, jsonObject.toJSONString());
         }catch(Exception ex){
             log.error("error-->"+ex);
@@ -51,25 +53,67 @@ public class ServerReqServiceImpl implements ServerReqService {
         String urlParam ="";
         String reqUrl = "";
         if(time==null && status==null){
-             urlParam = String.format("id=%s&currentLines=%s", id,currentLines);
-             reqUrl = "/api/AppTelecomLinkPackage/updateLinkPackage";
+            urlParam ="id="+id+"&currentLines="+currentLines;
+             reqUrl = "/api/AppTelecomLinkPackage/updateLinkPackage?";
         }
         if(time!=null && status==null){
-            urlParam = String.format("id=%s&beginTime=s%&currentLines=%s", id, DateUtil.simpleDateFormatyMdHms(time),currentLines);
-            reqUrl = "/api/AppTelecomLinkPackage/updateLinkPackageBeginTime";
+            urlParam ="id="+id+"&beginTime="+DateUtil.simpleDateFormatyMdHms(time)+"&currentLines="+currentLines;
+            reqUrl = "/api/AppTelecomLinkPackage/updateLinkPackageBeginTime?";
 
         }
         if(time!=null && status!=null){
-            urlParam = String.format("id=%s&beginTime=s%&currentLines=%s&status=%s", id,DateUtil.simpleDateFormatyMdHms(time),currentLines,status);
-            reqUrl = "/api/AppTelecomLinkPackage/updateLinkPackageEndTime";
+            urlParam ="id="+id+"&endTime="+DateUtil.simpleDateFormatyMdHms(time)+"&currentLines="+currentLines+"&status="+status;
+            reqUrl = "/api/AppTelecomLinkPackage/updateLinkPackageEndTime?";
 
         }
         try {
-            reqUrl = appServerHttpUrl+ reqUrl;
+            reqUrl = appServerHttpUrl+ reqUrl+urlParam;
             RestClient.postForm(reqUrl, urlParam);
         }catch(Exception ex){
             log.error("error-->"+ex);
         }
 
     }
+
+    /****
+     * 同步电信解析文件信息
+     * @param appTelecomLink
+     */
+    @Override
+    public void syncAppTelecomLink(AppTelecomLink appTelecomLink) {
+        JSONObject jsonObject = (JSONObject)JSONObject.toJSON(appTelecomLink);
+        String appServerHttpUrl = propertiesService.getAppServerHttpUrl();
+        try {
+            String reqUrl = appServerHttpUrl+"/api/appTelecomLink/saveAppTelecomLink";
+            RestClient.postForm(reqUrl, jsonObject.toJSONString());
+        }catch(Exception ex){
+            log.error("error-->"+ex);
+        }
+
+    }
+
+    @Override
+    public void updateAppTelecomLink(AppTelecomLink appTelecomLink) {
+        JSONObject jsonObject = (JSONObject)JSONObject.toJSON(appTelecomLink);
+        String appServerHttpUrl = propertiesService.getAppServerHttpUrl();
+        try {
+            String reqUrl = appServerHttpUrl+"/api/appTelecomLink/updateAppTelecomLink";
+            RestClient.postForm(reqUrl, jsonObject.toJSONString());
+        }catch(Exception ex){
+            log.error("error-->"+ex);
+        }
+    }
+
+    @Override
+    public void syncAppPermission(AppPermission appPermission) {
+        JSONObject jsonObject = (JSONObject)JSONObject.toJSON(appPermission);
+        String appServerHttpUrl = propertiesService.getAppServerHttpUrl();
+        try {
+            String reqUrl = appServerHttpUrl+"/api/appTelecomLinkPermission/saveAppPermission";
+            RestClient.postForm(reqUrl, jsonObject.toJSONString());
+        }catch(Exception ex){
+            log.error("error-->"+ex);
+        }
+    }
+
 }

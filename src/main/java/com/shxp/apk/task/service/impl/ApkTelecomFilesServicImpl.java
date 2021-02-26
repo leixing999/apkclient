@@ -2,13 +2,12 @@ package com.shxp.apk.task.service.impl;
 
 import com.shxp.apk.analyse.ApkInfo;
 import com.shxp.apk.analyse.ApkUtil;
-import com.shxp.apk.domain.po.ApkTelecomFileDetailPo;
-import com.shxp.apk.domain.po.ApkTelecomFileParsePo;
-import com.shxp.apk.domain.po.ApkTelecomFilesPo;
+import com.shxp.apk.domain.po.*;
 import com.shxp.apk.domain.vo.UrlPathVO;
 import com.shxp.apk.task.MultiThreadDownload;
 import com.shxp.apk.task.mapper.ApkTelecomFileMapper;
 import com.shxp.apk.task.service.*;
+import com.shxp.apk.utils.DateUtil;
 import com.shxp.apk.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,10 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -67,7 +64,7 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
         File files[] = FileUtils.search(propertiesService.getFilePath());
 
         for (File file : files) {
-            String fileRecords = "" + FileUtils.getContentByLineList(file.getPath()).size();
+            long fileRecords = FileUtils.getContentByLineList(file.getPath()).size();
             ApkTelecomFilesPo apkTelecomFilesPo = new ApkTelecomFilesPo();
             apkTelecomFilesPo.setFileName(file.getName());
             if (this.getApkTelecomFiles(apkTelecomFilesPo).size() == 0) {
@@ -76,15 +73,26 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 apkTelecomFilesPo.setFileId(UUID.randomUUID().toString());
                 apkTelecomFilesPo.setFileStatus("0");
                 apkTelecomFilesPo.setFileFinishedRecords("0");
-                apkTelecomFilesPo.setFileRecords(fileRecords);
-                apkTelecomFilesPo.setFileImportTime("");
+                apkTelecomFilesPo.setFileRecords(""+fileRecords);
+                apkTelecomFilesPo.setFileImportTime(DateUtil.simpleDateFormatyMdHms());
                 this.addApkTelecomFiles(apkTelecomFilesPo);
+
+                AppTelecomLinkPackage appTelecomLinkPackage = new AppTelecomLinkPackage();
+                appTelecomLinkPackage.setId(apkTelecomFilesPo.getFileId());
+                appTelecomLinkPackage.setLinkPackageName(apkTelecomFilesPo.getFileName());
+                appTelecomLinkPackage.setLinkPackageSize(file.length());
+                appTelecomLinkPackage.setLinkPackageLines(fileRecords);
+                appTelecomLinkPackage.setLinkPackageStatus(0);
+                appTelecomLinkPackage.setLinkPackageAddTime(new Date());
+
+                serverReqService.syncAppTelecomLinkPackage(appTelecomLinkPackage);
+
             } else {
-                System.out.println("exists");
                 log.info("【apkDealyService】文件已存在，" + file.getName());
             }
         }
     }
+
 
     /****
      * 解析已经入库的电信apk文件里的具体apk下载信息
@@ -101,9 +109,9 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
         //初始化解析电信APK文件的URL分析服务
         UrlPathService urlPathService = new UrlPathService();
         for (ApkTelecomFilesPo apkTelecomFilesPo : delayList) {
+
             //对电信APK文件下载进行归类为对应的URL 路径列表
             List<UrlPathVO> urlPathVOList = urlPathService.parseApkUrlPath(apkTelecomFilesPo.getFilePath());
-
             //apk现在线程队列
             List<ApkDownThread> myThreadList = null;
             //获取上次下载的电信APK包文件位置
@@ -116,6 +124,9 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
             List<UrlPathVO> tempUrlPathVOList = null;
             //判断是否完成批量下载
             boolean isEnd = true;
+
+            //向服务器同步开始下载状态
+            serverReqService.updateLinkPackage(apkTelecomFilesPo.getFileId(), new Date(), nextDownloadIndex, null);
             while (isEnd) {
                 startIndex = nextDownloadIndex * maxThread;
                 endIndex = (nextDownloadIndex + 1) * maxThread;
@@ -123,18 +134,29 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 if (endIndex < urlPathVOList.size()) {
                     tempUrlPathVOList = urlPathVOList.subList(startIndex, endIndex);
                 } else {
-                    tempUrlPathVOList = urlPathVOList.subList(startIndex, urlPathVOList.size());
+                    tempUrlPathVOList = urlPathVOList.subList(startIndex, urlPathVOList.size()-1);
                     isEnd = false;
                 }
                 //初始化apk现在线程队列
                 myThreadList = new ArrayList<>();
                 UrlPathVO tempPathVo = null;
-                for (int i = 0; i < maxThread; i++) {
+                for (int i = 0; i < tempUrlPathVOList.size(); i++) {
                     tempPathVo = tempUrlPathVOList.get(i);
                     //判断是否此APK是否下载过
                     if (apkTelecomFileParseService.getApkTelecomFileParseList(tempPathVo.getApkFileName()).size() == 0) {
-                        //将待下载的APK信息添加到对应的队列中
-                        myThreadList.add(new ApkDownThread(tempPathVo, apkTelecomFilesPo.getFileId()));
+                        boolean isExist = true;
+                        //将待下载的APK信息添加到对应的队列中,判断是否有重复记录出现。
+                        for(ApkDownThread apkDownThread : myThreadList){
+
+                            if(tempPathVo.getApkFileName().equals(apkDownThread.getUrlPathVO().getApkFileName())){
+                                isExist = false;
+                                break;
+                            }
+                        }
+                        if(isExist){
+                            myThreadList.add(new ApkDownThread(tempPathVo, apkTelecomFilesPo.getFileId()));
+
+                        }
                     }
                 }
 
@@ -156,12 +178,16 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 }
                 //获取下批次线程索引值
                 nextDownloadIndex++;
+                //向服务器同步apk下载完状态
+                serverReqService.updateLinkPackage(apkTelecomFilesPo.getFileId(), null, nextDownloadIndex, null);
 
             }
             //完成本批次线程
             apkTelecomFilesPo.setFileStatus("2");
             apkTelecomFilesPo.setFileFinishedRecords(urlPathVOList.size() + "");
             this.updateApkTelecomFile(apkTelecomFilesPo);
+            //向服务器同步apk全部下载完成状态
+            serverReqService.updateLinkPackage(apkTelecomFilesPo.getFileId(), new Date(), nextDownloadIndex, 2);
         }
         executor.shutdown();
 
@@ -177,6 +203,9 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
         public ApkDownThread(UrlPathVO urlPathVO, String fileId) {
             this.urlPathVO = urlPathVO;
             this.fileId = fileId;
+        }
+        public UrlPathVO getUrlPathVO(){
+            return urlPathVO;
         }
 
         @Override
@@ -208,6 +237,19 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 //将下载的APK文件信息入库
                 apkTelecomFileParseService.addApkTelecomFileParse(apkTelecomFileParsePo);
 
+                AppTelecomLink appTelecomLink = new AppTelecomLink();
+                appTelecomLink.setId(apkTelecomFileParsePo.getId());
+                appTelecomLink.setAppRelFileId(this.fileId);
+                appTelecomLink.setAppIsDown(2);
+                appTelecomLink.setAppAddTime(new Date());
+                appTelecomLink.setAppDownloadSpendTime((endTime - startTime));
+                appTelecomLink.setAppOriginTextLine(1l);
+                appTelecomLink.setAppOriginLink(urlPathVO.getRequestApkUrlPath());
+                appTelecomLink.setAppFileName(apkTelecomFileParsePo.getApkFileName());
+                appTelecomLink.setAppFileSize(fileSize);
+
+                serverReqService.syncAppTelecomLink(appTelecomLink);
+
             }
             return "【" + urlPathVO.getApkFileName() + "】，下载完成！";
         }
@@ -227,11 +269,11 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
     public void apkAnalyseService() {
         log.info("解析apk文件的的权限。包名以及主类等信息 开始");
         List<ApkTelecomFileParsePo> list = apkTelecomFileParseService.getApkTelecomFileParses("0");
-        String status = "2";
+        String status = "";
 
         for (ApkTelecomFileParsePo apkTelecomFileParsePo : list) {
             try {
-
+                status = "2";
                 String apkPath = propertiesService.getDownloadpath() + apkTelecomFileParsePo.getApkFileName();
                 ApkInfo apkInfo = new ApkUtil().getApkInfo(apkPath);
 
@@ -246,6 +288,34 @@ public class ApkTelecomFilesServicImpl implements ApkTelecomFilesService {
                 apkTelecomFileDetailPo.setApkOriginName(apkInfo.toString());
                 //将解析Apk信息插入Apk解包明细表中去
                 apkTelecomFileDetailService.addApkFileDetail(apkTelecomFileDetailPo);
+
+
+                AppTelecomLink appTelecomLink = new AppTelecomLink();
+                appTelecomLink.setId(apkTelecomFileParsePo.getId());
+                appTelecomLink.setAppAddTime(new Date());
+                appTelecomLink.setAppClassName(apkInfo.getLaunchableActivity());
+                appTelecomLink.setAppApplicationName(apkInfo.getApplicationLable());
+                appTelecomLink.setAppVersion(apkInfo.getVersionName());
+                appTelecomLink.setAppPackageName(apkInfo.getPackageName());
+                appTelecomLink.setAppUpdateTime(new Date());
+
+                //向服务器同步app对应静态解析信息
+                serverReqService.updateAppTelecomLink(appTelecomLink);
+
+                for(String permission : apkInfo.getUsesPermissions()){
+                    try {
+                        AppPermission appPermission = new AppPermission();
+                        appPermission.setId(UUID.randomUUID().toString());
+                        appPermission.setAppLinkId(appTelecomLink.getId());
+                        appPermission.setAppPermissionName(permission);
+                        serverReqService.syncAppPermission(appPermission);
+                    }catch (Exception ex){
+                        log.error("同步 app 权限失败！");
+                    }
+
+                }
+
+//                appTelecomLink.setPermission(apkTelecomFileDetailPo.getApkPermissionName());
 
             } catch (Exception e) {
                 status = "-1";

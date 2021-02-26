@@ -171,4 +171,10 @@ public class DateUtil {
         return DATE_FORMAT.format(date);
     }
 
+    public static String simpleDateFormatyMdHms(){
+        return simpleDateFormatyMdHms(new Date());
+    }
+
+
+
 }
